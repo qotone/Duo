@@ -1,0 +1,13 @@
+dfu_util.name=Duo FW Uploader
+dfu_util.name.communication=USB
+dfu_util.name.protocol=
+dfu_util.name.program.protocol=
+dfu_util.program.tool=fw_loader
+dfu_util.program.extra_params=
+
+rblink.name=RBLink
+rblink.name.communication=USB
+rblink.name.protocol=
+rblink.name.program.protocol=
+rblink.program.tool=openocd
+rblink.program.extra_params=

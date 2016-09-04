@@ -1,0 +1,143 @@
+
+# RedBear_Duo compile variables
+# ------------------------- 
+
+name=RedBear IoT Boards
+
+# Compile tool path
+compiler.path={runtime.tools.arm-none-eabi-gcc-redbear-4.9-2015-q3.path}/bin/
+#compiler.path={runtime.platform.path}/tools/arm-none-eabi/bin/
+
+# Compile define  
+compiler.device.define=-DSTM32_DEVICE -DSTM32F2XX -DPLATFORM_THREADING=1 -DPLATFORM_ID=88 -DPLATFORM_NAME=duo -DUSBD_VID_SPARK=0x2B04 -DUSBD_PID_DFU=0xD058 -DUSBD_PID_CDC=0xC058  
+compiler.baudrate.define=-DSTART_DFU_FLASHER_SERIAL_SPEED=14400 -DSTART_YMODEM_FLASHER_SERIAL_SPEED=28800 -DSTART_AVRDUDE_FLASHER_SERIAL_SPEED=19200
+compiler.platform.define=-DRELEASE_BUILD -DINCLUDE_PLATFORM=1 -DUSE_STDPERIPH_DRIVER -DDFU_BUILD_ENABLE
+compiler.image.define=-DUSER_FIRMWARE_IMAGE_SIZE=0x40000 -DUSER_FIRMWARE_IMAGE_LOCATION=0x80C0000
+compiler.system_version.define=-DSYSTEM_VERSION_STRING=0.2.4
+compiler.module.define=-DMODULAR_FIRMWARE=1 -DMODULE_FUNCTION=5 -DMODULE_INDEX=1 -DMODULE_VERSION=7 -DMODULE_DEPENDENCY=4,2,7
+
+# Compile s files options
+compiler.s.cmd=arm-none-eabi-as
+compiler.s.flags=-c -g -x assembler-with-cpp -mthumb 
+
+# Compile c files options
+compiler.c.cmd=arm-none-eabi-gcc
+compiler.c.flags=-c -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -w -std=gnu99 -fno-common -fmessage-length=0 -Wall -fno-exceptions -fno-builtin-malloc -fno-builtin-free -fno-builtin-realloc -ffunction-sections -fdata-sections -fomit-frame-pointer -nostdlib --param max-inline-insns-single=500 -fno-exceptions -fno-rtti
+
+# Compile cpp files options
+compiler.cpp.cmd=arm-none-eabi-g++
+compiler.cpp.flags=-c -g3 -gdwarf-2 -Os -mcpu=cortex-m3 -w -std=gnu++11 -fno-common -fmessage-length=0 -Wall -fno-exceptions -fno-builtin-malloc -fno-builtin-free -fno-builtin-realloc -ffunction-sections -fdata-sections -fomit-frame-pointer -nostdlib --param max-inline-insns-single=500 -fno-exceptions -fno-rtti
+
+# Create archives options
+compiler.ar.cmd=arm-none-eabi-ar
+compiler.ar.flags=rcs
+
+# Combine to create elf file options
+compiler.c.elf.cmd=arm-none-eabi-g++
+compiler.c.elf.flags=-Os -Wl,--gc-sections  
+
+# Create bin file options
+compiler.elf2bin.cmd=arm-none-eabi-objcopy
+compiler.elf2bin.flags=-O binary
+
+# Create hex file options
+compiler.elf2hex.cmd=arm-none-eabi-objcopy
+compiler.elf2hex.flags1=-O ihex
+compiler.elf2hex.flags2=-O ihex -I binary 
+
+# Calculate hex size options
+compiler.size.cmd=arm-none-eabi-size
+
+# RedBear_Duo compile patterns
+# ------------------------
+
+## Compile S files
+recipe.s.o.pattern="{compiler.path}{compiler.s.cmd}" {compiler.s.flags} "{source_file}" -o "{object_file}"
+
+## Compile c files
+recipe.c.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.flags} {compiler.device.define} {compiler.baudrate.define} {compiler.platform.define} {compiler.image.define} {compiler.system_version.define} {compiler.module.define} -mcpu={build.mcu} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} {build.extra_flags} {build.variant_base_include} {build.variant_extra_include} {includes} "{source_file}" -o "{object_file}"
+
+## Compile c++ files
+recipe.cpp.o.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} {compiler.device.define} {compiler.baudrate.define} {compiler.platform.define} {compiler.image.define} {compiler.system_version.define} {compiler.module.define} -mcpu={build.mcu} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} {build.extra_flags} {build.variant_base_include} {build.variant_extra_include} {includes} "{source_file}" -o "{object_file}"
+
+## Create archives
+recipe.ar.pattern="{compiler.path}{compiler.ar.cmd}" {compiler.ar.flags} "{build.path}/libcore.a" "{object_file}"
+
+## Combine gc-sections, archives, and objects
+recipe.c.combine.pattern="{compiler.path}{compiler.c.elf.cmd}" {compiler.device.define} -g3 -gdwarf-2 -Os -mcpu={build.mcu} -mthumb -fno-builtin {compiler.platform.define} {compiler.system_version.define} -Werror {build.variant_base_include} {build.variant_extra_include} -I. -MMD -MP -MF "{build.path}/{build.project_name}.elf.d" -ffunction-sections -fdata-sections -Wall -Wno-switch -Wno-error=deprecated-declarations -fmessage-length=0 -fno-strict-aliasing -DSPARK=1 {compiler.baudrate.define} -fno-builtin-malloc -fno-builtin-free -fno-builtin-realloc {compiler.image.define} {compiler.module.define} {object_files} --output "{build.path}/{build.project_name}.elf" -Wl,--whole-archive "{runtime.platform.path}/cores/RedBear_Duo/redbear_sdk/X_lib/STM32F2xx_Peripheral_Libraries.a" -Wl,--no-whole-archive -nostartfiles -Xlinker --gc-sections {build.ld_include2} {build.ld_include3} -L{build.path} "-L{runtime.platform.path}/cores/RedBear_Duo/redbear_sdk/X_lib" -Wl,--whole-archive -lcore -lhal-dynalib -lservices-dynalib -lsystem-dynalib -lrt-dynalib -lwiring -lcommunication-dynalib -lplatform -lwiring_globals -Wl,--no-whole-archive -lnosys {build.ld_include1} -L. "-T{build.variant.path}/{build.ldscript}" -Wl,--defsym,USER_FIRMWARE_IMAGE_SIZE=0x40000 -Wl,--defsym,USER_FIRMWARE_IMAGE_LOCATION=0x80C0000 -Wl,-Map,{build.path}/{build.project_name}.map -lstdc++_nano -lm -Wl,--start-group -lgcc -lg_nano -lc_nano -Wl,--end-group -Wl,--start-group -lgcc -lc_nano -Wl,--end-group
+
+## Create bin
+recipe.objcopy.eep.pattern="{compiler.path}{compiler.elf2bin.cmd}" {compiler.elf2bin.flags} "{build.path}/{build.project_name}.elf" "{build.path}/{build.project_name}.bin"
+
+## Create hex
+#recipe.objcopy.hex1.pattern="{compiler.path}{compiler.elf2hex.cmd}" {compiler.elf2hex.flags1} "{build.path}/{build.project_name}.elf" "{build.path}/{build.project_name}_raw.hex"  
+#recipe.objcopy.hex2.pattern="{compiler.path}{compiler.elf2hex.cmd}" {compiler.elf2hex.flags2} "{build.path}/{build.project_name}.bin" "{build.path}/{build.project_name}.hex" 
+
+## Add CRC32
+#recipe.hooks.postbuild.0.pattern="{runtime.platform.path}/tools/crc32/{runtime.os}/sh" #"{runtime.platform.path}/tools/crc32/{runtime.os}/crc32.sh" "{build.path}/{build.project_name}.bin" #"{runtime.platform.path}/tools/crc32/{runtime.os}" "{compiler.path}"
+
+## Save hex
+recipe.output.tmp_file={build.project_name}.bin
+recipe.output.save_file={build.project_name}.bin 
+
+## Compute size
+recipe.size.pattern="{compiler.path}{compiler.size.cmd}" -A "{build.path}/{build.project_name}.elf"
+recipe.size.regex=\.text\s+([0-9]+).*
+
+## Preprocessor
+preproc.includes.flags=-w -x c++ -M -MG -MP
+recipe.preproc.includes="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} {preproc.includes.flags} -mcpu={build.mcu} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DPLATFORM_ID=88 -DPLATFORM_NAME=duo {build.extra_flags} {build.variant_base_include} {build.variant_extra_include} {includes} "{source_file}"
+
+preproc.macros.flags=-w -x c++ -E -CC
+recipe.preproc.macros="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} {preproc.macros.flags} -mcpu={build.mcu} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} -DPLATFORM_ID=88 -DPLATFORM_NAME=duo {build.extra_flags} {build.variant_base_include} {build.variant_extra_include} {includes} "{source_file}" -o "{preprocessed_file_path}"
+
+# RedBear_Duo Uploader tools
+# ----------------------
+
+tools.fw_loader.path={runtime.platform.path}/tools/fw_loader/{runtime.os}
+tools.fw_loader.cmd=fw-load
+tools.fw_loader.cmd.windows=fw-load.bat
+
+tools.fw_loader.erase.params.verbose=
+tools.fw_loader.erase.params.quiet=
+tools.fw_loader.erase.pattern=
+
+tools.fw_loader.bootloader.params.verbose=
+tools.fw_loader.bootloader.params.quiet=
+tools.fw_loader.bootloader.pattern="{path}/{cmd}" {path}/dfu-util {runtime.platform.path}/firmwares
+
+
+tools.avrdude.cmd.path={runtime.tools.avrdude.path}/bin/avrdude
+tools.avrdude.config.path={runtime.platform.path}/avrdude_conf/avrdude.conf 
+
+tools.avrdude.cmd.path.linux={runtime.tools.avrdude.path}/bin/avrdude
+tools.avrdude.config.path.linux={runtime.platform.path}/avrdude_conf/avrdude.conf
+
+tools.avrdude.upload.params.verbose=-v -v -v -v
+tools.avrdude.upload.params.quiet=-q -q
+tools.avrdude.upload.pattern="{cmd.path}" "-C{config.path}" {upload.verbose} -p{build.mcu} -c{upload.protocol} -P{serial.port} -b{upload.speed} -D "-Uflash:w:{build.path}/{build.project_name}.bin.hex:i"
+
+#
+# OpenOCD tool
+#
+
+tools.openocd.path={runtime.tools.openocd.path}
+tools.openocd.cmd=bin/openocd
+tools.openocd.cmd.windows=bin/openocd.exe
+
+tools.openocd.upload.params.verbose=-d1
+tools.openocd.upload.params.quiet=-d0
+tools.openocd.upload.pattern="{path}/{cmd}" {upload.verbose} -s "{path}/share/openocd/scripts/" -f "{runtime.platform.path}/variants/{build.variant}/{build.openocdscript}" -c "program {{{build.path}/{build.project_name}.bin}} verify reset exit 0x80c0000"
+
+tools.openocd.program.params.verbose=-d2
+tools.openocd.program.params.quiet=-d0
+tools.openocd.program.pattern=
+
+tools.openocd.erase.params.verbose=-d3
+tools.openocd.erase.params.quiet=-d0
+tools.openocd.erase.pattern=
+
+tools.openocd.bootloader.params.verbose=-d1
+tools.openocd.bootloader.params.quiet=-d0
+tools.openocd.bootloader.pattern="{path}/{cmd}" {bootloader.verbose} -s "{path}/share/openocd/scripts/" -f "{runtime.platform.path}/variants/{build.variant}/{build.openocdscript}" -c "init; reset halt; Unlock (); reset halt; program {{{runtime.platform.path}/firmwares/{bootloader.bootloader_file}}} verify {bootloader.bootloader_loc}; program {{{runtime.platform.path}/firmwares/{bootloader.system_part1_file}}} verify {bootloader.system_part1_loc}; program {{{runtime.platform.path}/firmwares/{bootloader.system_part2_file}}} verify {bootloader.system_part2_loc}; program {{{runtime.platform.path}/firmwares/{bootloader.user_part_file}}} verify reset exit {bootloader.user_part_loc}"
+
